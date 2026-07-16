@@ -86,6 +86,13 @@ class CliTests(unittest.TestCase):
         self.assertEqual(json.loads(inspect_result.stdout)["parameters"], 6)
         self.assertIn("const-fold", passes_result.stdout)
 
+    def test_native_export_writes_mlir_dialect_syntax(self) -> None:
+        result = self.run_cli("native-export", str(EXAMPLE), "--optimize")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("ng.linear_relu", result.stdout)
+        self.assertIn("(tensor<1x2xf32>, tensor<2x2xf32>, tensor<2xf32>)", result.stdout)
+
     def test_visualize_and_demo_generate_artifact_bundles(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             graph_path = Path(directory) / "graph.svg"

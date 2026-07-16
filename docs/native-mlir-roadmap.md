@@ -1,19 +1,28 @@
-# Native MLIR integration roadmap
+# Native MLIR status and roadmap
 
-The standalone optimizer is intentionally useful before LLVM is installed. Native integration
-will be added as an adapter, not as a second implementation with divergent semantics.
+The first native milestone is complete. [`native_mlir/`](../native_mlir/README.md) is an
+out-of-tree MLIR 22.1.6 project, not generated display text.
 
-## Planned stages
+## Implemented
 
-1. Pin one LLVM release and add a containerized `mlir-opt` toolchain.
-2. Define the Neural Graph dialect with TableGen operation and type constraints.
-3. Translate standalone NGIR to the native dialect and round-trip it.
-4. Port each tested rewrite as an MLIR pattern with positive and negative `lit` tests.
-5. Lower supported operations through Linalg/Arith/Tensor and bufferization.
-6. Execute compiled CPU output and compare it with the standalone reference runtime.
+- TableGen `ng` dialect with `constant`, `add`, `mul`, `matmul`, `relu`, `linear_relu`, and
+  `return` operations
+- Static rank-0 through rank-2 `f32` verification, positive dimensions, bounded tensor sizes,
+  broadcasting checks, MatMul geometry, bias geometry, and function-return checks
+- IEEE binary32 constant folding
+- Type-safe multiply-by-one and nested-ReLU canonicalization
+- One-use guarded MatMul + bias Add + ReLU fusion
+- Side-effect-aware dead-code elimination
+- Complete conversion to Arith, Tensor, Linalg, and Func with zero-initialized Linalg MatMul
+- `mlir-opt`-style native driver and positive/negative FileCheck tests
+- Python `native-export` bridge for the dependency-free graph format
 
-## Completion bar
+## Next stages
 
-Native support will not be marked supported until a clean container build parses every example,
-runs the pass suite, eliminates illegal Neural Graph ops during lowering, and passes seeded
-original-vs-compiled numerical regression tests.
+1. One-shot bufferization and MemRef lowering.
+2. LLVM dialect conversion and a CPU execution runner.
+3. Seeded reference-vs-compiled numerical regression.
+4. Dynamic-shape design, if a concrete use case justifies the additional verifier surface.
+5. ONNX import and broader operator coverage.
+
+Native machine-code generation remains explicitly unsupported until stages 1–3 are complete.

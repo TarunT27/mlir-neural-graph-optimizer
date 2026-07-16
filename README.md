@@ -8,21 +8,24 @@
 
 [![CI](https://github.com/TarunT27/mlir-neural-graph-optimizer/actions/workflows/ci.yml/badge.svg)](https://github.com/TarunT27/mlir-neural-graph-optimizer/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![MLIR 22.1.6](https://img.shields.io/badge/MLIR-22.1.6-8b5cf6?logo=llvm)](native_mlir/README.md)
+[![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=cplusplus)](native_mlir/README.md)
 [![coverage ≥80%](https://img.shields.io/badge/coverage-%E2%89%A580%25-14b8a6)](#quality-gates)
 [![License: MIT](https://img.shields.io/badge/License-MIT-f59e0b.svg)](LICENSE)
 
-A dependency-free, executable neural-graph compiler lab with an MLIR-style SSA format,
-immutable optimization passes, guarded operator fusion, Linalg-oriented lowering, and
-seeded numerical equivalence checks.
+A neural-graph compiler lab with an immutable Python reference implementation, a real
+out-of-tree C++/MLIR dialect, guarded operator fusion, complete Linalg lowering, graph
+visualization, and seeded numerical equivalence checks.
 
 [Quick start](#quick-start) · [Passes](#optimization-pipeline) · [IR reference](docs/ir-reference.md) · [Architecture](docs/architecture.md)
 
 </div>
 
 > [!IMPORTANT]
-> This project implements a standalone **MLIR-style** IR and rewrite pipeline. It does not
-> claim to be a registered LLVM/MLIR dialect. Native MLIR integration is an explicit roadmap
-> item; the current optimizer and CPU reference runtime work without LLVM.
+> The Python optimizer and CPU reference runtime work without LLVM. The optional
+> [`native_mlir/`](native_mlir/README.md) layer is a registered MLIR 22.1.6 dialect with
+> TableGen operations, native rewrite passes, verifiers, and full lowering to
+> Arith/Tensor/Linalg/Func. It does not yet claim machine-code generation.
 
 ## Why this project exists
 
@@ -35,7 +38,8 @@ rewrite can be verified, executed, and checked against the original graph.
 - Reference CPU interpreter for original and optimized graphs
 - Seeded numerical validation with configurable tolerances
 - Deterministic SVG graph rendering and one-command demo artifacts
-- No runtime dependencies; Python 3.11+ is enough
+- Native C++/MLIR optimizer with FileCheck integration tests
+- No Python runtime dependencies; Python 3.11+ is enough for the reference path
 
 ## Quick start
 
@@ -104,6 +108,9 @@ ng-opt validate examples/tiny_mlp.mlir --trials 100 --seed 42
 # Emit readable Linalg-oriented bridge text
 ng-opt lower examples/tiny_mlp.mlir --optimize -o lowered.mlir
 
+# Export syntax accepted by the real C++/MLIR dialect
+ng-opt native-export examples/tiny_mlp.mlir --optimize -o native.mlir
+
 # Inspect parameters and operation counts
 ng-opt inspect examples/tiny_mlp.mlir
 
@@ -124,7 +131,8 @@ flowchart LR
   D --> E["Fuse Linear + ReLU"]
   E --> F["Dead Code Elimination"]
   F --> G["Reference CPU Runtime"]
-  F --> H["Linalg-oriented Text"]
+  F --> H["Native NG Dialect"]
+  H --> I["Arith + Tensor + Linalg + Func"]
   A -. "seeded equivalence" .-> G
 ```
 
@@ -150,7 +158,10 @@ Run a custom order with `--passes const-fold,canonicalize,dce`; list registered 
 | Deterministic graph SVGs | Supported |
 | Dynamic shapes, control flow, convolution, quantization | Roadmap |
 | ONNX import | Roadmap |
-| Registered native LLVM/MLIR dialect | Roadmap |
+| Registered native LLVM/MLIR 22.1.6 dialect | Supported |
+| Native lowering with no surviving `ng` operations | Supported |
+| Native FileCheck pass/verifier suite | Supported |
+| Native bufferization and CPU machine code | Roadmap |
 | GPU code generation | Roadmap |
 
 Unsupported syntax, dtypes, shapes, operations, or unsafe rewrites fail clearly. They are never
@@ -160,6 +171,7 @@ silently approximated.
 
 ```text
 src/ngopt/       immutable IR, parser, verifier, passes, runtime, CLI
+native_mlir/      C++17 TableGen dialect, native passes, Linalg lowering, driver
 tests/           unit, integration, CLI, and numerical regression tests
 examples/        checked-in MLIR-style input modules
 docs/            architecture, IR, pass semantics, and roadmap
@@ -178,6 +190,10 @@ coverage run -m unittest discover -s tests -v
 coverage combine
 coverage report --fail-under=80
 python -m compileall -q src
+
+# Optional native MLIR gates (after configuring native_mlir/build)
+cmake --build native_mlir/build --target ngopt-native-opt
+cmake --build native_mlir/build --target check-ng
 ```
 
 The suite includes parser/verifier failures, pass positive and negative cases, idempotence,
@@ -189,14 +205,15 @@ runs the same checks on Windows, macOS, and Linux for Python 3.11–3.14.
 - **Immutable IR:** every pass returns a new graph and a report; caller-owned input is unchanged.
 - **Strict floating point by default:** unsafe identities such as `x * 0` and reassociation are absent.
 - **Small, testable surface:** static `f32` keeps semantics inspectable and validation meaningful.
-- **Honest lowering boundary:** emitted Linalg-oriented text is a bridge artifact, while the
-  standalone interpreter is the executable backend.
+- **Two explicit lowering boundaries:** `ng-opt lower` emits readable bridge text; the native
+  driver emits verifier-checked MLIR with all NG operations converted to standard dialects.
+  The standalone interpreter remains the executable correctness oracle.
 - **Input safety:** parser input is capped at 4 MiB; graph memory and compute budgets are
   verified before execution; validation trials and total work are bounded; non-finite values
   and unsupported constructs fail fast.
 
 See [architecture](docs/architecture.md), [IR reference](docs/ir-reference.md),
-[pass semantics](docs/passes.md), and the [native MLIR roadmap](docs/native-mlir-roadmap.md).
+[pass semantics](docs/passes.md), and the [native MLIR guide](native_mlir/README.md).
 
 ## Contributing
 

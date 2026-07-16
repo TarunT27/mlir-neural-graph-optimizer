@@ -13,6 +13,7 @@ from pathlib import Path
 from ngopt import __version__
 from ngopt.ir import Graph, Module, Tensor
 from ngopt.lowering import lower_to_linalg
+from ngopt.native import print_native_module
 from ngopt.parser import ParseError, parse_module
 from ngopt.passes import PASS_NAMES, PassManager, default_pipeline
 from ngopt.printer import print_module
@@ -183,6 +184,13 @@ def _cmd_lower(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_native_export(arguments: argparse.Namespace) -> int:
+    module = _load_module(arguments.input)
+    graph = _maybe_optimize(module, optimize=arguments.optimize, passes=arguments.passes)
+    _atomic_write(arguments.output, print_native_module(Module(module.name, graph)))
+    return 0
+
+
 def _cmd_run(arguments: argparse.Namespace) -> int:
     module = _load_module(arguments.input)
     graph = _maybe_optimize(module, optimize=arguments.optimize, passes=arguments.passes)
@@ -308,6 +316,15 @@ def build_parser() -> argparse.ArgumentParser:
     lower.add_argument("--optimize", action="store_true")
     lower.add_argument("--passes")
     lower.set_defaults(handler=_cmd_lower)
+
+    native_export = subparsers.add_parser(
+        "native-export", help="export syntax accepted by the native C++/MLIR optimizer"
+    )
+    native_export.add_argument("input")
+    native_export.add_argument("-o", "--output")
+    native_export.add_argument("--optimize", action="store_true")
+    native_export.add_argument("--passes")
+    native_export.set_defaults(handler=_cmd_native_export)
 
     run = subparsers.add_parser("run", help="execute a graph on the reference CPU runtime")
     run.add_argument("input")

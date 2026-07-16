@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mlir-neural-graph-optimizer"
-version = "0.1.0"
-description = "Dependency-free MLIR-style neural graph optimizer and reference runtime"
+version = "0.2.0"
+description = "Neural graph optimizer with a Python reference runtime and native C++/MLIR dialect"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
@@ -16,6 +16,7 @@ classifiers = [
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
+  "Programming Language :: C++",
   "Topic :: Software Development :: Compilers",
 ]
 
